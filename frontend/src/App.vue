@@ -14,7 +14,7 @@
                   :name="route.meta.layout.transition.enter ?? defaultTransition"
                   :mode="defaultTransitionMode ?? route.meta.layout.transition.mode">
                   <Suspense suspensible>
-                    <AppComp :key="route.path" :comp="Component" />
+                    <AppComp :key="String(route.name)" :comp="Component" />
                   </Suspense>
                 </JTransition>
             </AppComp>

@@ -11,6 +11,7 @@ import { remote } from '@/plugins/remote';
 import { isConnectedToServer } from '@/store';
 import { apiStore } from '@/store/api';
 import { isArray, isNil } from '@/utils/validation';
+import { router } from '@/plugins/router';
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return */
 type OmittedKeys = 'fields' | 'userId' | 'enableImages' | 'enableTotalRecordCount' | 'enableImageTypes';
@@ -172,6 +173,12 @@ async function resolveAndAdd<T extends Record<K, (...args: any[]) => any>, K ext
 }
 
 /**
+ * If the current route doesn't match the initial route, Suspense is resolving a page navigation,
+ * so the data is not relevant at all for the new route
+ */
+const isRouting = (initialRoute: string) => router.currentRoute.value.name !== initialRoute;
+
+/**
  * This is the internal logic of the composables
  */
 function _sharedInternalLogic<T extends Record<K, (...args: any[]) => any>, K extends keyof T, U extends ParametersAsGetters<T[K]>>(
@@ -180,6 +187,7 @@ function _sharedInternalLogic<T extends Record<K, (...args: any[]) => any>, K ex
   methodName: MaybeReadonlyRef<K | undefined>,
   ops: Required<ComposableOps>
 ): (this: any, ...args: ComposableParams<T, K, U>) => Promise<ReturnPayload<T, K, typeof ofBaseItem>> | ReturnPayload<T, K, typeof ofBaseItem> {
+  const initialRouteName = router.currentRoute.value.name;
   const offlineParams: OfflineParams<T, K>[] = [];
   const isFuncDefined = (): boolean => unref(api) !== undefined && unref(methodName) !== undefined;
 
@@ -196,7 +204,7 @@ function _sharedInternalLogic<T extends Record<K, (...args: any[]) => any>, K ex
   const cachedData = computed<ReturnType<typeof apiStore.getCachedRequest> | undefined>((previous) => {
     const currentCachedRequest = apiStore.getCachedRequest(`${String(unref(api)?.name)}.${String(unref(methodName))}`, stringArgs.value);
 
-    if ((loading.value || isNil(loading.value)) && !currentCachedRequest) {
+    if (((loading.value || isNil(loading.value)) && !currentCachedRequest) || isRouting(initialRouteName)) {
       return previous;
     }
 
@@ -225,7 +233,7 @@ function _sharedInternalLogic<T extends Record<K, (...args: any[]) => any>, K ex
     const unrefApi = unref(api);
     const unrefMethod = unref(methodName);
 
-    if (!unrefApi || !unrefMethod) {
+    if (!unrefApi || !unrefMethod || isRouting(initialRouteName)) {
       return;
     }
 
